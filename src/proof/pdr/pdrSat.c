@@ -19,6 +19,7 @@
 ***********************************************************************/
 
 #include "pdrInt.h"
+#include <ctype.h>
 
 ABC_NAMESPACE_IMPL_START
 
@@ -61,6 +62,77 @@ sat_solver * Pdr_ManCreateSolver( Pdr_Man_t * p, int k )
     Saig_ManForEachPo( p->pAig, pObj, i )
         Pdr_ObjSatVar( p, k, 1, pObj );
     return pSat;
+}
+
+
+
+int get_a_number(char * in, int * number, int * pnt) {
+    *number = 0;
+    while( isdigit(in[*pnt]) ) {
+        *number *= 10;
+        *number += in[*pnt] - '0';
+        ++ *pnt;
+    }
+    if (in[*pnt] == '\0' || in[*pnt] == '\n' || in[*pnt] == '\r')
+        return 0;
+
+    ++ *pnt; // skip the whitespace
+    if (isdigit(in[*pnt]))
+        return 1;
+    assert (in[*pnt] == '\0' || in[*pnt] == '\n' || in[*pnt] == '\r');
+    return 0;
+}
+
+void HZ_Pdr_LoadClauses( Pdr_Man_t * p )
+{
+    char unsat_sat[10];
+    int nclause, nframe;
+    int nPiLit = 2*(p->pAig->nTruePis+1); // to be substracted from the numbers
+    int clsi;
+    char line[1024];
+    char * fgetsres;
+
+    FILE * fp = fopen("inv.cnf", "r");
+    if (!fp)
+        return;
+
+    fscanf(fp, "%s %d %d",unsat_sat, &nclause, &nframe);
+    fgets(line, sizeof(line), fp);
+
+    for (clsi = 0; clsi < nclause; ++clsi) {
+        int rl, lit, ptr = 0;
+        int ret;
+        Vec_Int_t * litvec, * pilit;
+        Pdr_Set_t * lemma;
+
+        fgetsres = fgets(line, sizeof(line), fp);
+        rl = strlen(line);
+        assert (rl < 1024); // o.w. we are not reading a whole line
+        assert(fgetsres != NULL);
+        litvec = Vec_IntAlloc(16);
+        pilit = Vec_IntAlloc(16);
+
+        do{
+            ret = get_a_number(line, &lit, &ptr);
+            assert (lit >= nPiLit);
+            lit -= nPiLit;
+            Vec_IntPush(litvec, lit);
+            // 
+            // Pdr_SetCreate
+
+        } while(ret);
+        lemma = Pdr_SetCreate(litvec, pilit);
+
+        Vec_VecPush( p->vClauses, 1, lemma );  
+        Pdr_ManSolverAddClause( p, 1, lemma );
+
+        Vec_IntFree(litvec);
+        Vec_IntFree(pilit);
+    }
+    // 1 add to p->vClauses
+    // Pdr_ManSolverAddClause
+
+    printf("Loaded %d clauses.\n", nclause);
 }
 
 /**Function*************************************************************

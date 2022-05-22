@@ -1280,7 +1280,9 @@ int Pdr_ManSolveInt( Pdr_Man_t * p )
         p->nQueLim = p->pPars->nRestLimit;
         assert( pCube == NULL );
         Pdr_ManSetPropertyOutput( p, iFrame );
-        Pdr_ManCreateSolver( p, ++iFrame );
+        Pdr_ManCreateSolver( p, ++iFrame ); // HZ: this is adding one frame
+        if (iFrame == 1)
+            HZ_Pdr_LoadClauses(p);
         if ( fPrintClauses )
         {
             Abc_Print( 1, "*** Clauses after frame %d:\n", iFrame );
@@ -1423,10 +1425,12 @@ int Pdr_ManSolve( Aig_Man_t * pAig, Pdr_Par_t * pPars )
         p->pAig->vSeqModelVec = p->vCexes;
         p->vCexes = NULL;
     }
+    Abc_FrameSetInv( Pdr_ManDeriveInfinityClauses( p, RetValue!=1 ) );
+    Pdr_ManDumpClausesToStdout(p, RetValue==1 );
     if ( p->pPars->fDumpInv )
     {
         char * pFileName = pPars->pInvFileName ? pPars->pInvFileName : Extra_FileNameGenericAppend(p->pAig->pName, "_inv.pla");
-        Abc_FrameSetInv( Pdr_ManDeriveInfinityClauses( p, RetValue!=1 ) );
+        // Abc_FrameSetInv( Pdr_ManDeriveInfinityClauses( p, RetValue!=1 ) );
         Pdr_ManDumpClauses( p, pFileName, RetValue==1 );
         printf( "Dumped inductive invariant in file \"%s\".\n", pFileName );
     }
