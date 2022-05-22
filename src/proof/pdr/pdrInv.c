@@ -413,12 +413,44 @@ void Pdr_ManDumpClauses( Pdr_Man_t * p, char * pFileName, int fProved )
     }
     fprintf( pFile, ".e\n\n" );
     fclose( pFile );
-    Vec_IntFreeP( &vFlopCounts );
-    Vec_PtrFree( vCubes );
     if ( fProved )
         Abc_Print( 1, "Inductive invariant was written into file \"%s\".\n", pFileName );
     else
         Abc_Print( 1, "Clauses of the last timeframe were written into file \"%s\".\n", pFileName );
+    
+    do{
+        // dumping to file
+        FILE * fp = fopen("inv.cnf","w");
+
+        // save the cube information
+        if(fp) {
+            if (fProved) {
+                int nPiLit = 2*(p->pAig->nTruePis+1);
+                fprintf(fp, "unsat %d %d\n", Vec_PtrSize(vCubes), p->nFrames);
+                Vec_PtrForEachEntry( Pdr_Set_t *, vCubes, pCube, i )
+                {   
+                    int j;
+                    if ( pCube->nRefs == -1 )
+                        continue;
+                    for ( j = 0; j< pCube->nLits; ++j ) {
+                        if ( pCube->Lits[j] == -1 )
+                            continue;
+                        fprintf( fp, "%d ", pCube->Lits[j] + nPiLit );
+                    }
+                    fprintf( fp, "\n" ); 
+                }
+            } else
+                fprintf(fp, "sat\n");
+
+            fclose(fp);
+        } else {
+            Abc_Print(1, "Unable to open ffmap.info for write.\n");
+        }
+
+    }while(0);
+
+    Vec_IntFreeP( &vFlopCounts );
+    Vec_PtrFree( vCubes );
 }
 
 /**Function*************************************************************
